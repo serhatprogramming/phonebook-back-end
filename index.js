@@ -6,6 +6,7 @@ const cors = require("cors");
 
 const app = express();
 
+app.use(express.static("build"));
 app.use(cors());
 app.use(express.json());
 
@@ -14,6 +15,18 @@ const Person = require("./models/person");
 app.get("/api/persons", (req, res) => {
   Person.find({}).then((people) => {
     res.json(people);
+  });
+});
+
+app.get("/api/persons/info", (req, res) => {
+  Person.find({}).then((people) => {
+    res.json({ length: people.length });
+  });
+});
+
+app.get("/api/persons/:id", (req, res) => {
+  Person.findById(req.params.id).then((person) => {
+    res.json(person);
   });
 });
 
@@ -30,6 +43,37 @@ app.post("/api/persons", (req, res) => {
     res.json(person);
   });
 });
+
+app.delete("/api/persons/:id", (req, res, next) => {
+  Person.findByIdAndDelete(req.params.id)
+    .then((result) => res.status(204).end())
+    .catch((e) => next(e));
+});
+
+app.put("/api/persons/:id", (req, res, next) => {
+  const body = req.body;
+
+  const person = {
+    name: body.name,
+    number: body.number,
+  };
+
+  Person.findByIdAndUpdate(req.params.id, person, { new: true })
+    .then((updatedPerson) => res.json(updatedPerson))
+    .catch((e) => next(e));
+});
+
+const errorHandler = (error, req, res, next) => {
+  console.error(error.message);
+
+  if (error.name === "CastError") {
+    return res.status(400).send({ error: "malformatted id" });
+  }
+
+  next(error);
+};
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`The server is listening on port ${PORT}`));
